@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+*.log
+dump.rdb
+payment-middleware
+coverage.out
+.kiro/
+*.sh

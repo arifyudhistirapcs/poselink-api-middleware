@@ -1,0 +1,21 @@
+# Environment variables (contains secrets)
+.env
+
+# Compiled binary
+payment-middleware
+
+# Redis dump
+dump.rdb
+
+# Log files
+app.log
+*.log
+
+# Test coverage
+coverage.out
+
+# IDE / Kiro
+.kiro/
+
+# OS files
+.DS_Store

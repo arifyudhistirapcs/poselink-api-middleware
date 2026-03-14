@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  middleware:
+    build: .
+    container_name: payment-middleware
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      - ABLY_API_KEY=${ABLY_API_KEY}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET:-ECR2022secretKey}
+      - SERVER_PORT=8080
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-60}
+      - MIDTID_MAPPINGS=${MIDTID_MAPPINGS:-{}}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_MIN_IDLE_CONNS=${REDIS_MIN_IDLE_CONNS:-5}
+      - REDIS_MAX_CONNS=${REDIS_MAX_CONNS:-100}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: payment-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis_data:
