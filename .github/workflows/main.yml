@@ -1,0 +1,17 @@
+name: Demo Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Jenkins Generic Webhook
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '${{ toJson(github.event) }}' \
+            "${{ secrets.JENKINS_WEBHOOK_URL }}"
