@@ -23,30 +23,41 @@ type AblyPublisher interface {
 
 // AblyClient implements the AblyPublisher interface using the Ably SDK
 type AblyClient struct {
-	client           *ably.Realtime
+	realtimeClient   *ably.Realtime
+	restClient       *ably.REST
 	encryptionSecret string
 }
 
 // NewAblyClient creates a new Ably client with the provided API key and encryption secret
 func NewAblyClient(apiKey, encryptionSecret string) (*AblyClient, error) {
-	client, err := ably.NewRealtime(
+	// REST client for publishing (ensures JSON encoding compatible with Android SDK)
+	restClient, err := ably.NewREST(
 		ably.WithKey(apiKey),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Ably client: %w", err)
+		return nil, fmt.Errorf("failed to initialize Ably REST client: %w", err)
+	}
+
+	// Realtime client for subscribing to responses
+	realtimeClient, err := ably.NewRealtime(
+		ably.WithKey(apiKey),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Ably Realtime client: %w", err)
 	}
 
 	return &AblyClient{
-		client:           client,
+		realtimeClient:   realtimeClient,
+		restClient:       restClient,
 		encryptionSecret: encryptionSecret,
 	}, nil
 }
 
-// PublishPaymentRequest publishes a payment token to the EDC device channel with retry logic
-// Sends a JSON object containing the encrypted token and trxId as metadata
+// PublishPaymentRequest publishes a payment token to the EDC device channel via REST API.
+// Uses REST client to ensure JSON encoding compatible with Android Ably SDK.
 func (a *AblyClient) PublishPaymentRequest(serialNumber, token, trxID string) error {
 	channelName := fmt.Sprintf("edc:%s", serialNumber)
-	channel := a.client.Channels.Get(channelName)
+	channel := a.restClient.Channels.Get(channelName)
 
 	// Create message payload with token and trxId metadata
 	payload := map[string]string{
@@ -60,57 +71,45 @@ func (a *AblyClient) PublishPaymentRequest(serialNumber, token, trxID string) er
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	// Retry configuration: 3 retries with exponential backoff (100ms, 200ms, 400ms)
+	// Retry configuration: 3 retries with exponential backoff
 	maxRetries := 3
 	backoffDurations := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 400 * time.Millisecond}
 
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
-			// Wait for backoff duration before retry
 			time.Sleep(backoffDurations[attempt-1])
 		}
 
 		ctx := context.Background()
-		// Send as JSON string
 		err := channel.Publish(ctx, "payment_request", string(payloadJSON))
 		if err == nil {
+			log.Printf("Published payment request to channel %s (attempt %d)", channelName, attempt+1)
 			return nil
 		}
 
 		lastErr = err
+		log.Printf("Failed to publish to %s (attempt %d): %v", channelName, attempt+1, err)
 	}
 
 	return fmt.Errorf("failed to publish payment request after %d retries: %w", maxRetries, lastErr)
 }
 
-// SubscribeToResponses subscribes to the response channel pattern and routes messages to the handler
+// SubscribeToResponses subscribes to the response channel and routes messages to the handler
 func (a *AblyClient) SubscribeToResponses(handler func(response models.EDCResponse)) error {
-	// Subscribe to channel pattern "response:*" with event "payment_result"
-	// Note: Ably Go SDK doesn't support channel patterns directly in the same way as some other SDKs
-	// We'll need to subscribe to specific channels or use a different approach
-	// For now, we'll subscribe to a wildcard pattern if supported, or document the limitation
-	
-	// The Ably Go SDK requires explicit channel names, so we'll subscribe to "response:*" as a literal channel
-	// In production, you may need to dynamically subscribe to specific response channels
-	channel := a.client.Channels.Get("response:*")
+	channel := a.realtimeClient.Channels.Get("response:*")
 
 	ctx := context.Background()
 	_, err := channel.Subscribe(ctx, "payment_result", func(msg *ably.Message) {
-		// Parse the message data into EDCResponse
 		var response models.EDCResponse
 		var encryptedData string
 		
-		// Handle different data types from Ably
 		switch data := msg.Data.(type) {
 		case string:
-			// Data is encrypted string from EDC
 			encryptedData = data
 		case []byte:
-			// Data is encrypted bytes from EDC
 			encryptedData = string(data)
 		case map[string]interface{}:
-			// If data is already a map (shouldn't happen with encrypted data), try to use it directly
 			jsonData, err := json.Marshal(data)
 			if err != nil {
 				fmt.Printf("Error marshaling EDC response map: %v\n", err)
@@ -120,7 +119,6 @@ func (a *AblyClient) SubscribeToResponses(handler func(response models.EDCRespon
 				fmt.Printf("Error unmarshaling EDC response from map: %v\n", err)
 				return
 			}
-			// Call the handler with the parsed response
 			handler(response)
 			return
 		default:
@@ -128,7 +126,6 @@ func (a *AblyClient) SubscribeToResponses(handler func(response models.EDCRespon
 			return
 		}
 
-		// Decrypt the encrypted data
 		log.Printf("Received encrypted response from EDC, length: %d", len(encryptedData))
 		decryptedJSON, err := crypto.DecryptAES128ECB(encryptedData, a.encryptionSecret)
 		if err != nil {
@@ -138,15 +135,12 @@ func (a *AblyClient) SubscribeToResponses(handler func(response models.EDCRespon
 
 		log.Printf("Successfully decrypted EDC response, length: %d", len(decryptedJSON))
 
-		// Unmarshal the decrypted JSON
 		if err := json.Unmarshal([]byte(decryptedJSON), &response); err != nil {
 			fmt.Printf("Error unmarshaling decrypted EDC response: %v\n", err)
 			return
 		}
 
 		log.Printf("Successfully parsed EDC response for transaction: %s", response.TrxID)
-
-		// Call the handler with the parsed response
 		handler(response)
 	})
 
@@ -157,9 +151,9 @@ func (a *AblyClient) SubscribeToResponses(handler func(response models.EDCRespon
 	return nil
 }
 
-// Close closes the Ably client connection
+// Close closes both Ably clients
 func (a *AblyClient) Close() {
-	if a != nil && a.client != nil {
-		a.client.Close()
+	if a != nil && a.realtimeClient != nil {
+		a.realtimeClient.Close()
 	}
 }

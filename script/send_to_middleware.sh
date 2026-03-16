@@ -27,7 +27,7 @@ TRANSACTION=$(cat <<EOF
   "action": "$ACTION",
   "trx_id": "$TRX_ID",
   "pos_address": "192.168.10.1",
-  "time_stamp": "$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")",
+  "time_stamp": "$(date +"%Y-%m-%d %H:%M:%S")",
   "method": "purchase"
 }
 EOF
