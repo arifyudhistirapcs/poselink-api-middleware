@@ -73,7 +73,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 
 	// Initialize handlers
-	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, mockAbly)
+	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, mockAbly, nil)
 	edcHandler := handlers.NewEDCResponseHandler(transactionStore)
 
 	// Create a simple health check handler for testing (no Redis dependency)

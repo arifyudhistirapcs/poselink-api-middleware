@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script untuk mengirim transaction ke middleware
-# Usage: ./send_to_middleware.sh [amount] [action] [method]
+# Script untuk mengirim transaction ke Development Server
+# Usage: ./send_to_dev.sh [amount] [action] [method]
 #
 # Arguments:
 #   amount  - Transaction amount (default: 100000)
@@ -9,28 +9,29 @@
 #   method  - Payment method: purchase, qris, refund (default: purchase)
 #
 # Examples:
-#   ./send_to_middleware.sh 25000 Sale purchase
-#   ./send_to_middleware.sh 50000 Sale qris
-#   ./send_to_middleware.sh 100000 Void purchase
-#   ./send_to_middleware.sh 0 Settlement purchase
+#   ./send_to_dev.sh 25000 Sale purchase
+#   ./send_to_dev.sh 50000 Sale qris
+#   ./send_to_dev.sh 100000 Void purchase
+#   ./send_to_dev.sh 0 Settlement purchase
 
 # Configuration
 MIDDLEWARE_URL="https://development-ecrlink.pcsindonesia.com/api/v1/transaction"
 MID="1999115921"
-TID="10747686"
+TID="10747684"
 
 # Default values
 AMOUNT=${1:-100000}
 ACTION=${2:-Sale}
 METHOD=${3:-purchase}
 
-echo "=== Sending Transaction to Middleware ==="
+echo "=== Sending Transaction to Development Server ==="
+echo "URL: $MIDDLEWARE_URL"
 echo "Amount: Rp $AMOUNT"
 echo "Action: $ACTION"
 echo "Method: $METHOD"
 echo ""
 
-# Generate trx_id first
+# Generate trx_id
 TRX_ID="TRX$(date +%s)000"
 
 # Generate transaction JSON
@@ -84,8 +85,7 @@ PAYLOAD=$(cat <<EOF
 EOF
 )
 
-echo "Sending to middleware..."
-echo "URL: $MIDDLEWARE_URL"
+echo "Sending to development server..."
 echo ""
 
 # Send to middleware
@@ -98,5 +98,5 @@ echo "$RESPONSE" | jq '.' 2>/dev/null || echo "$RESPONSE"
 echo ""
 
 echo "=== Done ==="
-echo "Check your EDC device for the transaction"
-
+echo "Transaction ID: $TRX_ID"
+echo "Check status: curl https://development-ecrlink.pcsindonesia.com/api/v1/transaction/status/$TRX_ID"

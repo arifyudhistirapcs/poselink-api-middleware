@@ -80,7 +80,8 @@ func main() {
 	router.Use(handlers.PanicRecoveryMiddleware)
 
 	// Initialize transaction handler
-	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, ablyClient)
+	holdHandler := handlers.NewHoldHandler(redisClient.Client())
+	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, ablyClient, holdHandler)
 
 	// Initialize admin handler
 	adminHandler := handlers.NewAdminHandler(midtidMapper, redisClient.Client())
@@ -100,6 +101,10 @@ func main() {
 	}).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/v1/admin/transaction/{trx_id}/ttl", adminHandler.GetTransactionTTL).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/v1/admin/transaction/{trx_id}/extend-ttl", adminHandler.ExtendTransactionTTL).Methods("POST", "OPTIONS")
+
+	// QA hold toggle endpoints
+	router.HandleFunc("/api/v1/admin/hold", holdHandler.SetHold).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/v1/admin/hold", holdHandler.GetHold).Methods("GET", "OPTIONS")
 
 	// Health check endpoint
 	router.HandleFunc("/health", healthHandler.CheckHealth).Methods("GET", "OPTIONS")

@@ -81,7 +81,7 @@ func TestHandleTransaction_Success(t *testing.T) {
 		"M123:T456": "SN789",
 	})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request
 	reqBody := models.PaymentRequest{
@@ -134,7 +134,7 @@ func TestHandleTransaction_MissingTrxID(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request with empty trx_id
 	reqBody := models.PaymentRequest{
@@ -167,7 +167,7 @@ func TestHandleTransaction_WhitespaceOnlyTrxID(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request with whitespace-only trx_id
 	reqBody := models.PaymentRequest{
@@ -196,7 +196,7 @@ func TestHandleTransaction_UnknownMIDTID(t *testing.T) {
 		"M123:T456": "SN789",
 	})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request with unknown MID/TID
 	reqBody := models.PaymentRequest{
@@ -232,7 +232,7 @@ func TestHandleTransaction_AblyPublishError(t *testing.T) {
 	})
 	publisher := NewMockPublisher()
 	publisher.publishError = &ablyError{msg: "connection failed"}
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request
 	reqBody := models.PaymentRequest{
@@ -281,7 +281,7 @@ func TestHandleTransaction_Timeout(t *testing.T) {
 		"M123:T456": "SN789",
 	})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request
 	reqBody := models.PaymentRequest{
@@ -330,7 +330,7 @@ func TestHandleTransaction_InvalidJSON(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request with invalid JSON
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transaction", bytes.NewReader([]byte("invalid json")))
@@ -370,7 +370,7 @@ func TestHandleTransactionStatus_Success(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Store a transaction with SUCCESS status
 	tx := &models.Transaction{
@@ -417,7 +417,7 @@ func TestHandleTransactionStatus_Failed(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Store a transaction with FAILED status
 	tx := &models.Transaction{
@@ -460,7 +460,7 @@ func TestHandleTransactionStatus_Pending(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Store a transaction with PENDING status
 	tx := &models.Transaction{
@@ -498,7 +498,7 @@ func TestHandleTransactionStatus_Timeout(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Store a transaction with TIMEOUT status
 	tx := &models.Transaction{
@@ -536,7 +536,7 @@ func TestHandleTransactionStatus_NotFound(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Create request for non-existent transaction
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/transaction/status/TRX999", nil)
@@ -564,7 +564,7 @@ func TestHandleTransactionStatus_AllStatuses(t *testing.T) {
 	store := store.NewSyncMapStore()
 	mapper := NewMockMapper(map[string]string{})
 	publisher := NewMockPublisher()
-	handler := NewTransactionHandler(store, mapper, publisher)
+	handler := NewTransactionHandler(store, mapper, publisher, nil)
 
 	// Test all valid status values
 	statuses := []models.TransactionStatus{

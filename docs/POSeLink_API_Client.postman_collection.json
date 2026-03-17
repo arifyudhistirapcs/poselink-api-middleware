@@ -1,0 +1,88 @@
+{
+	"info": {
+		"_postman_id": "poselink-api-client",
+		"name": "POSeLink API - POS Client",
+		"description": "API Collection untuk POS Client yang terintegrasi dengan POSeLink Middleware.\n\nClient bertanggung jawab membuat token terenkripsi sendiri (lihat dokumentasi enkripsi).\n\n**Setup:**\n1. Set variable `base_url` sesuai environment\n2. Set variable `mid` dan `tid` sesuai device\n3. Isi `token` dan `trx_id` sesuai transaksi",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://development-ecrlink.pcsindonesia.com",
+			"type": "string"
+		},
+		{
+			"key": "mid",
+			"value": "1999115921",
+			"type": "string"
+		},
+		{
+			"key": "tid",
+			"value": "10747686",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trx_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Kirim Transaksi",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"token\": \"{{token}}\",\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"trx_id\": \"{{trx_id}}\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/transaction",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "transaction"]
+				},
+				"description": "Mengirim transaksi pembayaran ke EDC.\n\nField `token` berisi data transaksi yang sudah dienkripsi (AES-128-ECB, Base64).\n\nPastikan MID dan TID sudah didaftarkan di middleware. Silakan hubungi admin jika belum.\n\nTimeout: 60 detik."
+			},
+			"response": []
+		},
+		{
+			"name": "Cek Status Transaksi",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/transaction/status/{{trx_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "transaction", "status", "{{trx_id}}"]
+				},
+				"description": "Cek status transaksi berdasarkan trx_id."
+			},
+			"response": []
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": ["{{base_url}}"],
+					"path": ["health"]
+				},
+				"description": "Cek apakah server middleware aktif."
+			},
+			"response": []
+		}
+	]
+}

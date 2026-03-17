@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type TransactionHandler struct {
 	store     store.TransactionStore
 	mapper    mapper.MIDTIDMapper
 	publisher ably.AblyPublisher
+	hold      *HoldHandler
 }
 
 // NewTransactionHandler creates a new TransactionHandler
@@ -27,11 +29,13 @@ func NewTransactionHandler(
 	store store.TransactionStore,
 	mapper mapper.MIDTIDMapper,
 	publisher ably.AblyPublisher,
+	hold *HoldHandler,
 ) *TransactionHandler {
 	return &TransactionHandler{
 		store:     store,
 		mapper:    mapper,
 		publisher: publisher,
+		hold:      hold,
 	}
 }
 
@@ -77,11 +81,16 @@ func (h *TransactionHandler) HandleTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Publish payment token to Ably with trxID metadata
-	if err := h.publisher.PublishPaymentRequest(serialNumber, req.Token, req.TrxID); err != nil {
-		LogError(req.TrxID, req.MID, req.TID, fmt.Sprintf("ably connection error: %v", err))
-		writeErrorResponse(w, http.StatusServiceUnavailable, fmt.Sprintf("ably connection error: %v", err))
-		return
+	// Check if transaction hold is enabled (QA testing feature)
+	if h.hold != nil && h.hold.IsHoldEnabled() {
+		log.Printf("[HOLD] Transaction %s held — not forwarding to EDC (serial: %s)", req.TrxID, serialNumber)
+	} else {
+		// Publish payment token to Ably with trxID metadata
+		if err := h.publisher.PublishPaymentRequest(serialNumber, req.Token, req.TrxID); err != nil {
+			LogError(req.TrxID, req.MID, req.TID, fmt.Sprintf("ably connection error: %v", err))
+			writeErrorResponse(w, http.StatusServiceUnavailable, fmt.Sprintf("ably connection error: %v", err))
+			return
+		}
 	}
 
 	// Wait for EDC response using polling strategy (Redis-compatible)

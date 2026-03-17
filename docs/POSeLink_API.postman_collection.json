@@ -1,0 +1,410 @@
+{
+	"info": {
+		"_postman_id": "poselink-api-collection",
+		"name": "POSeLink API",
+		"description": "API Collection untuk POSeLink Middleware - Payment Gateway EDC Integration.\n\nCollection ini sudah dilengkapi dengan:\n- Auto-enkripsi token (AES-128-ECB) via pre-request script\n- Auto-generate trx_id\n- Auto-generate timestamp\n\n**Setup:**\n1. Set variable `base_url` sesuai environment\n2. Set variable `mid` dan `tid` sesuai device\n3. Jalankan request langsung",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://development-ecrlink.pcsindonesia.com",
+			"type": "string"
+		},
+		{
+			"key": "mid",
+			"value": "1999115921",
+			"type": "string"
+		},
+		{
+			"key": "tid",
+			"value": "10747686",
+			"type": "string"
+		},
+		{
+			"key": "encryption_secret",
+			"value": "ECR2022secretKey",
+			"type": "string"
+		},
+		{
+			"key": "trx_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Transaction",
+			"description": "Endpoint untuk mengirim dan mengecek transaksi pembayaran.",
+			"item": [
+				{
+					"name": "Sale - Purchase (Kartu)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Auto-generate trx_id dan timestamp",
+									"const trxId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();",
+									"const now = new Date();",
+									"const pad = (n) => n.toString().padStart(2, '0');",
+									"const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;",
+									"",
+									"pm.collectionVariables.set('trx_id', trxId);",
+									"",
+									"// Build transaction data",
+									"const transaction = {",
+									"    amount: pm.variables.get('amount') || '1',",
+									"    action: 'Sale',",
+									"    trx_id: trxId,",
+									"    pos_address: '192.10.10.10',",
+									"    time_stamp: timestamp,",
+									"    method: 'purchase'",
+									"};",
+									"",
+									"// AES-128-ECB encryption",
+									"const secret = pm.collectionVariables.get('encryption_secret');",
+									"const sha1Hex = CryptoJS.SHA1(secret).toString(CryptoJS.enc.Hex);",
+									"const keyHex = sha1Hex.substring(0, 32);",
+									"const key = CryptoJS.enc.Hex.parse(keyHex);",
+									"const encrypted = CryptoJS.AES.encrypt(",
+									"    JSON.stringify(transaction),",
+									"    key,",
+									"    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }",
+									");",
+									"",
+									"pm.collectionVariables.set('token', encrypted.toString());",
+									"console.log('Transaction:', JSON.stringify(transaction));",
+									"console.log('TrxID:', trxId);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\",\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"trx_id\": \"{{trx_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transaction",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "transaction"]
+						},
+						"description": "Transaksi Sale dengan metode purchase (kartu debit/kredit).\n\nAmount default: 1 (set variable `amount` untuk mengubah)."
+					},
+					"response": []
+				},
+				{
+					"name": "Sale - QRIS",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const trxId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();",
+									"const now = new Date();",
+									"const pad = (n) => n.toString().padStart(2, '0');",
+									"const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;",
+									"",
+									"pm.collectionVariables.set('trx_id', trxId);",
+									"",
+									"const transaction = {",
+									"    amount: pm.variables.get('amount') || '1',",
+									"    action: 'Sale',",
+									"    trx_id: trxId,",
+									"    pos_address: '192.10.10.10',",
+									"    time_stamp: timestamp,",
+									"    method: 'qris'",
+									"};",
+									"",
+									"const secret = pm.collectionVariables.get('encryption_secret');",
+									"const sha1Hex = CryptoJS.SHA1(secret).toString(CryptoJS.enc.Hex);",
+									"const key = CryptoJS.enc.Hex.parse(sha1Hex.substring(0, 32));",
+									"const encrypted = CryptoJS.AES.encrypt(",
+									"    JSON.stringify(transaction), key,",
+									"    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }",
+									");",
+									"pm.collectionVariables.set('token', encrypted.toString());",
+									"console.log('Transaction:', JSON.stringify(transaction));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\",\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"trx_id\": \"{{trx_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transaction",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "transaction"]
+						},
+						"description": "Transaksi Sale dengan metode QRIS."
+					},
+					"response": []
+				},
+				{
+					"name": "Settlement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const trxId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();",
+									"const now = new Date();",
+									"const pad = (n) => n.toString().padStart(2, '0');",
+									"const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;",
+									"",
+									"pm.collectionVariables.set('trx_id', trxId);",
+									"",
+									"const transaction = {",
+									"    amount: '0',",
+									"    action: 'Settlement',",
+									"    trx_id: trxId,",
+									"    pos_address: '192.10.10.10',",
+									"    time_stamp: timestamp,",
+									"    method: 'purchase'",
+									"};",
+									"",
+									"const secret = pm.collectionVariables.get('encryption_secret');",
+									"const sha1Hex = CryptoJS.SHA1(secret).toString(CryptoJS.enc.Hex);",
+									"const key = CryptoJS.enc.Hex.parse(sha1Hex.substring(0, 32));",
+									"const encrypted = CryptoJS.AES.encrypt(",
+									"    JSON.stringify(transaction), key,",
+									"    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }",
+									");",
+									"pm.collectionVariables.set('token', encrypted.toString());",
+									"console.log('Transaction:', JSON.stringify(transaction));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\",\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"trx_id\": \"{{trx_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transaction",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "transaction"]
+						},
+						"description": "Settlement batch transaksi."
+					},
+					"response": []
+				},
+				{
+					"name": "Void",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const trxId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();",
+									"const now = new Date();",
+									"const pad = (n) => n.toString().padStart(2, '0');",
+									"const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;",
+									"",
+									"pm.collectionVariables.set('trx_id', trxId);",
+									"",
+									"const transaction = {",
+									"    amount: pm.variables.get('amount') || '1',",
+									"    action: 'Void',",
+									"    trx_id: trxId,",
+									"    pos_address: '192.10.10.10',",
+									"    time_stamp: timestamp,",
+									"    method: 'purchase'",
+									"};",
+									"",
+									"const secret = pm.collectionVariables.get('encryption_secret');",
+									"const sha1Hex = CryptoJS.SHA1(secret).toString(CryptoJS.enc.Hex);",
+									"const key = CryptoJS.enc.Hex.parse(sha1Hex.substring(0, 32));",
+									"const encrypted = CryptoJS.AES.encrypt(",
+									"    JSON.stringify(transaction), key,",
+									"    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }",
+									");",
+									"pm.collectionVariables.set('token', encrypted.toString());",
+									"console.log('Transaction:', JSON.stringify(transaction));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\",\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"trx_id\": \"{{trx_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transaction",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "transaction"]
+						},
+						"description": "Void / pembatalan transaksi."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Transaction Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/transaction/status/{{trx_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "transaction", "status", "{{trx_id}}"]
+						},
+						"description": "Cek status transaksi berdasarkan trx_id.\n\nGunakan trx_id dari transaksi yang sudah dikirim sebelumnya (otomatis ter-set dari request terakhir)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"description": "Endpoint admin untuk manajemen mapping MID/TID ke serial number EDC.",
+			"item": [
+				{
+					"name": "Create/Update Mapping",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mid\": \"{{mid}}\",\n  \"tid\": \"{{tid}}\",\n  \"serial_number\": \"PB0Z245S22374\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/mapping",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "mapping"]
+						},
+						"description": "Buat atau update mapping MID/TID ke serial number EDC."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Mapping",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/mapping?mid={{mid}}&tid={{tid}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "mapping"],
+							"query": [
+								{ "key": "mid", "value": "{{mid}}" },
+								{ "key": "tid", "value": "{{tid}}" }
+							]
+						},
+						"description": "Hapus mapping MID/TID."
+					},
+					"response": []
+				},
+				{
+					"name": "Migrate Mappings",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"force\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/migrate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "migrate"]
+						},
+						"description": "Migrasi mapping dari config MIDTID_MAPPINGS ke Redis.\n\nSet `force: true` untuk overwrite mapping yang sudah ada."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transaction TTL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/transaction/{{trx_id}}/ttl",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "transaction", "{{trx_id}}", "ttl"]
+						},
+						"description": "Cek sisa TTL (time-to-live) transaksi di Redis."
+					},
+					"response": []
+				},
+				{
+					"name": "Extend Transaction TTL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"duration_seconds\": 300\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/transaction/{{trx_id}}/extend-ttl",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "transaction", "{{trx_id}}", "extend-ttl"]
+						},
+						"description": "Perpanjang TTL transaksi. Default 300 detik (5 menit)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"description": "Health check endpoint.",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Cek apakah middleware dan Redis aktif."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
