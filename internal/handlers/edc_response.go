@@ -38,9 +38,9 @@ func (h *EDCResponseHandler) HandleEDCResponse(response models.EDCResponse) {
 	}
 
 	// Determine success/failure based on EDC response status field
-	// According to the design, we check the status field to determine success/failure
+	// EDC may return "success", "SUCCESS", or "paid" (for QRIS transactions) as success indicators
 	var newStatus models.TransactionStatus
-	if response.Status == "success" || response.Status == "SUCCESS" {
+	if response.Status == "success" || response.Status == "SUCCESS" || response.Status == "paid" {
 		newStatus = models.StatusSuccess
 	} else {
 		newStatus = models.StatusFailed
