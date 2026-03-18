@@ -32,7 +32,7 @@ func TestIntegration_TransactionWithEDCResponse(t *testing.T) {
 	}
 	
 	// Create handlers
-	transactionHandler := NewTransactionHandler(txStore, mockMapper, mockPublisher, nil)
+	transactionHandler := NewTransactionHandler(txStore, mockMapper, mockPublisher, nil, 2*time.Second)
 	edcResponseHandler := NewEDCResponseHandler(txStore)
 	
 	// Prepare transaction request
@@ -132,7 +132,7 @@ func TestIntegration_MultipleTransactionsConcurrent(t *testing.T) {
 		published: make([]PublishedMessage, 0),
 	}
 	
-	transactionHandler := NewTransactionHandler(txStore, mockMapper, mockPublisher, nil)
+	transactionHandler := NewTransactionHandler(txStore, mockMapper, mockPublisher, nil, 2*time.Second)
 	edcResponseHandler := NewEDCResponseHandler(txStore)
 	
 	// Start 3 concurrent transactions

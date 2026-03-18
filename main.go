@@ -81,7 +81,7 @@ func main() {
 
 	// Initialize transaction handler
 	holdHandler := handlers.NewHoldHandler(redisClient.Client())
-	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, ablyClient, holdHandler)
+	transactionHandler := handlers.NewTransactionHandler(transactionStore, midtidMapper, ablyClient, holdHandler, cfg.TimeoutDuration)
 
 	// Initialize admin handler
 	adminHandler := handlers.NewAdminHandler(midtidMapper, redisClient.Client())

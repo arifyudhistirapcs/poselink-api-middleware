@@ -77,7 +77,7 @@ func TestProperty_MissingTransactionIDRejection(t *testing.T) {
 				mappings: map[string]string{"M001:T001": "SN12345"},
 			}
 			transactionStore := store.NewSyncMapStore()
-			handler := NewTransactionHandler(transactionStore, mockMapper, mockAbly, nil)
+			handler := NewTransactionHandler(transactionStore, mockMapper, mockAbly, nil, 2*time.Second)
 
 			// Test with empty string
 			req := models.PaymentRequest{
@@ -122,7 +122,7 @@ func TestProperty_TransactionCreationWithPendingState(t *testing.T) {
 				mappings: map[string]string{"M001:T001": "SN12345"},
 			}
 			transactionStore := store.NewSyncMapStore()
-			handler := NewTransactionHandler(transactionStore, mockMapper, mockAbly, nil)
+			handler := NewTransactionHandler(transactionStore, mockMapper, mockAbly, nil, 2*time.Second)
 
 			req := models.PaymentRequest{
 				Token: token,

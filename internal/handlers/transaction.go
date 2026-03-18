@@ -18,10 +18,11 @@ import (
 
 // TransactionHandler handles payment transaction requests
 type TransactionHandler struct {
-	store     store.TransactionStore
-	mapper    mapper.MIDTIDMapper
-	publisher ably.AblyPublisher
-	hold      *HoldHandler
+	store           store.TransactionStore
+	mapper          mapper.MIDTIDMapper
+	publisher       ably.AblyPublisher
+	hold            *HoldHandler
+	timeoutDuration time.Duration
 }
 
 // NewTransactionHandler creates a new TransactionHandler
@@ -30,12 +31,17 @@ func NewTransactionHandler(
 	mapper mapper.MIDTIDMapper,
 	publisher ably.AblyPublisher,
 	hold *HoldHandler,
+	timeoutDuration time.Duration,
 ) *TransactionHandler {
+	if timeoutDuration <= 0 {
+		timeoutDuration = 60 * time.Second
+	}
 	return &TransactionHandler{
-		store:     store,
-		mapper:    mapper,
-		publisher: publisher,
-		hold:      hold,
+		store:           store,
+		mapper:          mapper,
+		publisher:       publisher,
+		hold:            hold,
+		timeoutDuration: timeoutDuration,
 	}
 }
 
@@ -94,8 +100,8 @@ func (h *TransactionHandler) HandleTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	// Wait for EDC response using polling strategy (Redis-compatible)
-	// Poll every 500ms for up to 60 seconds
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	// Poll every 500ms for up to configured timeout duration
+	ctx, cancel := context.WithTimeout(r.Context(), h.timeoutDuration)
 	defer cancel()
 
 	ticker := time.NewTicker(500 * time.Millisecond)
